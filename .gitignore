@@ -1,5 +1,7 @@
 .vscode
-
+.d
+.o
+.out
 #LaTex generated files
 
 **/*.aux

@@ -13,11 +13,11 @@ int main(int argc, char **argv) {
 
     U32 crc_val = 0;      /* CRC value                                     */
     int ret = 0;          /* return value for various routines             */
-    U8 buffer[500000];
+    U8 buffer_inf[500000];
     U8 buffer_def[200000];
     U32 totalHeight = 0;
     U64 bufDefCounter = 0;
-    U64 bufCounter = 0;
+    U64 bufInfCounter = 0;
 
     for (int x = 1; x < argc; x++) {
         U8 inputLength[4];
@@ -53,9 +53,9 @@ int main(int argc, char **argv) {
 
         //append the data to each other
         for (int y = 0; y < destinationLength; y++) {
-            buffer[y + bufCounter] = destinationBuffer[y];
+            buffer_inf[y + bufInfCounter] = destinationBuffer[y];
         }
-        bufCounter += destinationLength;
+        bufInfCounter += destinationLength;
 
         //close file
         fclose(f);
@@ -64,9 +64,9 @@ int main(int argc, char **argv) {
     printf("Total Height %u\n", totalHeight);
 
     //Deflate the data (compress)
-    ret = mem_def(buffer_def, &bufDefCounter, buffer, bufCounter, Z_DEFAULT_COMPRESSION);
+    ret = mem_def(buffer_def, &bufDefCounter, buffer_inf, bufInfCounter, Z_DEFAULT_COMPRESSION);
     if (ret == 0) { /* success */
-        printf("bufCounter = %lu, bufDefCounter = %lu\n", bufCounter, bufDefCounter);
+        printf("bufInfCounter = %lu, bufDefCounter = %lu\n", bufInfCounter, bufDefCounter);
     } else { /* failure */
         fprintf(stderr,"mem_def failed. ret = %d.\n", ret);
         return ret;

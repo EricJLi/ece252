@@ -13,7 +13,7 @@ SRCS   = catpng.c crc.c zutil.c
 OBJS   = catpng.o $(LIB_UTIL) 
 OBJS2  = findpng.o
 
-TARGETS= catpng.out findpng.out
+TARGETS= catpng.out findpng.out result.png
 
 all: ${TARGETS}
 

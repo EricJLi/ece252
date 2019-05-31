@@ -11,13 +11,27 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    U64 buffer_inf_length = 0;
+    U64 buffer_def_length = 0;
     U32 crc_val = 0;      /* CRC value                                     */
     int ret = 0;          /* return value for various routines             */
-    U8 buffer_inf[500000];
-    U8 buffer_def[200000];
     U32 totalHeight = 0;
     U64 bufDefCounter = 0;
     U64 bufInfCounter = 0;
+
+    for (int k = 1; k < argc; k++) {
+        U8 inputLength[4];
+        FILE* f = fopen(argv[k], "rb");
+        fseek(f, 33, SEEK_SET);
+        fread(inputLength, sizeof(inputLength), 1, f);
+        U64 sourceLength = inputLength[0] << 24 | inputLength[1] << 16 | inputLength[2] << 8 | inputLength[3];
+        buffer_def_length += sourceLength;
+    }
+
+    buffer_inf_length = ((buffer_def_length * 4) + 1) * 20;
+    printf("Help %lu\n", buffer_def_length);
+    U8 buffer_inf[buffer_inf_length];
+    U8 buffer_def[buffer_def_length];
 
     for (int x = 1; x < argc; x++) {
         U8 inputLength[4];
@@ -39,8 +53,8 @@ int main(int argc, char **argv) {
         fseek(f, 41, SEEK_SET);
         U8 sourceBuffer[sourceLength];
         fread(sourceBuffer, sizeof(sourceBuffer), 1, f);
-        U8 destinationBuffer[sourceLength * 500];
-        U64 destinationLength;
+        U64 destinationLength = ((sourceLength * 4) + 1) * 50;
+        U8 destinationBuffer[destinationLength];
 
         //Inflate the data (decompress)
         ret = mem_inf(destinationBuffer, &destinationLength, sourceBuffer, sourceLength);
@@ -60,6 +74,8 @@ int main(int argc, char **argv) {
         //close file
         fclose(f);
     }
+
+    printf("Help %lu\n", bufInfCounter);
 
     printf("Total Height %u\n", totalHeight);
 
@@ -83,20 +99,35 @@ int main(int argc, char **argv) {
     fwrite(&input64, 8, 1, fout);
 
     //Read/Write IHDR
-    fread(&input64, 8, 1, fin);
-    fwrite(&input64, 8, 1, fout);
+    U8 newCRCBuffer[13+4];
+    U32 newCRCBufferCounter = 17;
     fread(&input32, 4, 1, fin);
     fwrite(&input32, 4, 1, fout);
+
+    //type
+    fread(&input32, 4, 1, fin);
+    fwrite(&input32, 4, 1, fout);
+
+    //width
+    fread(&input32, 4, 1, fin);
+    fwrite(&input32, 4, 1, fout);
+
+    //Height
     fread(&input32, 4, 1, fin);
     totalHeight = htonl(totalHeight);
-    //Height
     fwrite(&totalHeight, 4, 1, fout);
     fread(&input32, 4, 1, fin);
     fwrite(&input32, 4, 1, fout);
     fread(&input8, 1, 1, fin);
     fwrite(&input8, 1, 1, fout);
+    //CRC
     fread(&input32, 4, 1, fin);
-    fwrite(&input32, 4, 1, fout);
+    //Calculate CRC for IHDR
+    fseek(fout, 12, SEEK_SET);
+    fread(&newCRCBuffer, newCRCBufferCounter, 1, fout);
+    crc_val = crc(newCRCBuffer, newCRCBufferCounter); // down cast the return val to U32
+    crc_val = htonl(crc_val);
+    fwrite(&crc_val, 4, 1, fout);
 
     //Read/Write IDAT
     U32 finLength = 0;
@@ -117,7 +148,6 @@ int main(int argc, char **argv) {
     U64 newBufferLength = bufDefCounter + 4;
     //Calculate new crc
     crc_val = crc(newBuffer, newBufferLength); // down cast the return val to U32
-    printf("crc_val = %u\n", crc_val);
     fwrite(&bufferType, 4, 1, fout);
     finLength = ntohl(finLength);
     U8 readBuffer[finLength];
@@ -131,12 +161,19 @@ int main(int argc, char **argv) {
     fwrite(&crc_val, 4, 1, fout);
     
     //Read/Write IEND
+    U8 endCRCBuffer[4];
+    U32 endCRCBufferCounter = 4;
+    
     fread(&input32, 4, 1, fin);
     fwrite(&input32, 4, 1, fout);
+    fread(&endCRCBuffer, 4, 1, fin);
+    fwrite(&endCRCBuffer, 4, 1, fout);
+    //CRC
+    //Calculate IEND
+    crc_val = crc(endCRCBuffer, endCRCBufferCounter); // down cast the return val to U32
+    crc_val = htonl(crc_val);
     fread(&input32, 4, 1, fin);
-    fwrite(&input32, 4, 1, fout);
-    fread(&input32, 4, 1, fin);
-    fwrite(&input32, 4, 1, fout);
+    fwrite(&crc_val, 4, 1, fout);
 
     fclose(fin);
     fclose(fout);

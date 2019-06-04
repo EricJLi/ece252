@@ -3,50 +3,22 @@
 #include <string.h>
 #include <curl/curl.h>
 #include <sys/types.h>
-#include <pthread.h>
 #include <unistd.h>
 #include "main_write_header_cb.h"
 
-#define NUMT 2
-
-struct thread_args              /* thread input parameters struct */
-{
-    int x;
-    int y;
-};
-
-struct thread_ret               /* thread return values struct   */
-{
-    int sum;
-    int product;
-};
-
-char url[256];
-int fileCounter;
-char filesRead[50][256];
-
-void *getImage(void *arg);
-
-int main(int argc, char** argv) {
-    int numThreads = 0;
-    int picNum = 0;
-    pthread_t p_tids[NUMT];
-    fileCounter = 0;
+int main( int argc, char** argv ) {
+    CURL *curl_handle;
+    CURLcode res;
+    char url[256];
+    RECV_BUF recv_buf;
+    char fname[256];
+    pid_t pid = getpid();
+    char filesRead[50][256];
     memset(filesRead, 0, 50*256);
-    int c;
-    while ((c = getopt (argc, argv, "t:n:")) != -1) {
-        printf("Loop %i", c);
-        switch (c) {
-        case 't':
-            numThreads = strtoul(optarg, NULL, 10);
-            printf("option -t specifies a value of %d.\n", numThreads);
-        case 'n':
-            picNum = strtoul(optarg, NULL, 10);
-	        printf("option -n specifies a value of %d.\n", picNum);
-        default:
-            return -1;
-        }
-    }
+    int fileCounter = 0;
+
+    
+    recv_buf_init(&recv_buf, BUF_SIZE);
     
     if (argc == 1) {
         strcpy(url, IMG_URL); 
@@ -55,37 +27,32 @@ int main(int argc, char** argv) {
     }
     printf("%s: URL is %s\n", argv[0], url);
 
-    CURLcode code = curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl_global_init(CURL_GLOBAL_DEFAULT);
 
-    for (int x = 0; x < NUMT; x++) {
-        pthread_create(&p_tids[x], NULL, getImage, (void*)&p_tids[x]);
-    }
-
-    for (int x = 0; x < NUMT; x++) {
-        pthread_join(p_tids[x], NULL);
-    }
-
-    return 0;
-}
-
-void *getImage(void *arg) {
-    CURLcode res;
-    char fname[256];
-    CURL *curl_handle;
-    RECV_BUF recv_buf;
-    pid_t pid = getpid();
-    //sprintf(in_params[0], "./output_%d.png", pid);
-
-    recv_buf_init(&recv_buf, BUF_SIZE);
-
+    /* init a curl session */
     curl_handle = curl_easy_init();
+
+    if (curl_handle == NULL) {
+        fprintf(stderr, "curl_easy_init: returned NULL\n");
+        return 1;
+    }
+
+    //set URL
     curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+
+    //set header cb to receive data
     curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, header_cb_curl);
+    //set user defined header data structure
     curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void *)&recv_buf);
+
+    //set write cb to receive data
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_cb_curl3); 
+    //set user defined write data structure
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&recv_buf);
+
+    /* some servers requires a user-agent field */
     curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-    
+
     while(fileCounter != 50) {
         res = curl_easy_perform(curl_handle);
 
@@ -111,9 +78,10 @@ void *getImage(void *arg) {
         }
     }
 
+
     /* cleaning up */
     curl_easy_cleanup(curl_handle);
     curl_global_cleanup();
     recv_buf_cleanup(&recv_buf);
-    return NULL;
+    return 0;
 }

@@ -116,7 +116,6 @@ void *getImage(void *arg) {
             fileCounter++;
         }
 
-
         if (fileCounter != 50) {
             recv_buf_cleanup(&recv_buf);
             recv_buf_init(&recv_buf, BUF_SIZE);
@@ -133,47 +132,45 @@ void *getImage(void *arg) {
 int catPng() {
     U32 totalHeight = 0;
     U64 bufCounter = 0;
-    U8 buffer[500000];
     U64 totalCounter = 0;
-    U8 total[2000000];
+    U32 width = 0;
+
+    memcpy(&width, &fileData[0].buffer[16], 4);
+    width = ntohl(width);
+
+    for (int k = 0; k < 50; k++) {
+        //totalHeight
+    	U32 height = 0;
+        memcpy(&height, &fileData[k].buffer[20], 4);
+        totalHeight += ntohl(height);
+    }
+
+    U64 totalBufferSize = ((width * 4) + 1) * totalHeight;
+    U8 buffer[500000];
+    U8 total[totalBufferSize];
 
     for(int a = 0; a < 50; a++){
-    	//totalHeight
-    	U32 height = 0;
-        memcpy(&height, &fileData[a].buffer[20], 4);
-        totalHeight += ntohl(height);
-        printf("totalHeight: %d\n", totalHeight);
-
-
         //IDAT data
         U32 IDAT_1st4bytes = 0;
         memcpy(&IDAT_1st4bytes, &fileData[a].buffer[33], 4);
         U64 source_len = ntohl(IDAT_1st4bytes);
-        printf("source_len: %lu\n", source_len);
 
         U8 source[source_len];
-        ///40还是41
         memcpy(&source, &fileData[a].buffer[41], source_len);
 
         U64 dest_len = 0;
         U8 dest[source_len * 500];
 
-        int decompress = mem_inf(dest, &dest_len, source, source_len);
-        printf("decompress: %i\n", decompress);
-
+        mem_inf(dest, &dest_len, source, source_len);
 
         //将每个PNG中的data放到一个大的buffer[]中,前面接着后面
-        int y;
-        for(y = 0; y <dest_len; y++){
+        for(int y = 0; y < dest_len; y++){
             buffer[y + bufCounter] = dest[y];
         }
         bufCounter += dest_len;
-
     }
 
-    int compress = mem_def(total, &totalCounter, buffer, bufCounter, Z_DEFAULT_COMPRESSION);
-    printf("compress: %i\n", compress);
-    printf("totalCounter: %lu\n", totalCounter);
+    mem_def(total, &totalCounter, buffer, bufCounter, Z_DEFAULT_COMPRESSION);
 
     unsigned int input32 = 0;
     unsigned long int input64 = 0;
@@ -217,8 +214,6 @@ int catPng() {
     //IHDR CRC field
     fwrite(&crc_IHDR1, 4, 1, fnew);
 
-
-
     //IDAT
 	U32 nIDATLength = htonl(totalCounter);
     fwrite(&nIDATLength, 4, 1, fnew);
@@ -241,8 +236,6 @@ int catPng() {
     //IDAT CRC field
     fwrite(&crc_IDAT1, 4, 1, fnew);    
 
-
-
     //IEND
     memcpy(&input32, &fileData[0].buffer[45+totalCounter], 4);
     fwrite(&input32, 4, 1, fnew);
@@ -251,7 +244,6 @@ int catPng() {
     memcpy(&input32, &fileData[0].buffer[53+totalCounter], 4);
     fwrite(&input32, 4, 1, fnew);
   
-   
     fclose(fnew);
 
     return 0;

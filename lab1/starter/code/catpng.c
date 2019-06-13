@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
         buffer_def_length += sourceLength;
     }
 
-    buffer_inf_length = ((buffer_def_length * 4) + 1) * 20;
+    buffer_inf_length = ((400 * 4) + 1) * 300;
     printf("Help %lu\n", buffer_def_length);
     U8 buffer_inf[buffer_inf_length];
     U8 buffer_def[buffer_def_length];

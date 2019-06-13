@@ -5,10 +5,10 @@ CC = gcc
 CFLAGS = -Wall -std=c99 -g # "curl-config --cflags" output is empty  
 LD = gcc
 LDFLAGS = -std=c99 -g 
-LDLIBS = -lcurl -pthread # "curl-config --libs" output
+LDLIBS = -lcurl -pthread -lz # "curl-config --libs" output
 
-SRCS   = paster.c main_write_header_cb.c
-OBJS  = paster.o main_write_header_cb.o
+SRCS   = paster.c main_write_header_cb.c crc.c zutil.c
+OBJS  = paster.o main_write_header_cb.o zutil.o crc.o
 TARGETS= paster.out
 
 all: ${TARGETS}

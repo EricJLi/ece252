@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <getopt.h>
 #include "main_write_header_cb.h"
 
 struct thread_args              /* thread input parameters struct */
@@ -37,7 +38,7 @@ int main(int argc, char** argv) {
     int picNum = 1;
     int c;
 
-    while ((c = getopt (argc, argv, "t:n:")) != -1) {
+    while ((c = getopt(argc, argv, "t:n:")) != -1) {
         switch (c) {
         case 't':
             numThreads = strtoul(optarg, NULL, 10);
